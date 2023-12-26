@@ -1,0 +1,117 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Cloud Formation template snippet to create a local userid and group in non-domain-joined Windows Server 2012 R2 instance. (c) 2017 Air11 Technology LLC -- licensed under the Apache OpenSource 2.0 license, https://opensource.org/licenses/Apache-2.0",
+                "Parameters": { 
+                "CarbonGroupName": {
+                    "Description": "Name of local group to be created",
+                    "AllowedPattern": "[a-zA-Z0-9]+",
+                    "Type": "String",
+                    "Default": "CloudFormationGroup"
+                },
+                "CarbonUserName": {
+                    "Description": "Local user to be added to \"Carbon Group Name\"",
+                    "AllowedPattern": "[a-zA-Z0-9]+",
+                    "Type": "String",
+                    "Default": "CloudFormationUser"
+                },
+                "CarbonPassword": {
+                    "Type": "String",
+                    "Description": "Password for the userid being added",
+                    "MaxLength": "32",
+                    "MinLength": "8",
+                    "Default": "Password@123"
+                }
+            },
+                "Resources": {
+                    "WindowsServerECInstance": {
+                        "Type": "AWS::EC2::Instance",
+                        "Properties" : {
+                            "ImageId" : "ami-066663db63b3aa675",
+                            "InstanceType" : "t2.micro",
+                            "KeyName" : "K1",
+                            "BlockDeviceMappings" : [
+                              {
+                                "DeviceName" : "/dev/sda1",
+                                "Ebs" : {
+                                  "VolumeType" : "gp2",
+                                  "VolumeSize" : "30"
+                                }
+                              }
+                            ]
+                          },
+                        "Metadata": {
+                            "AWS::CloudFormation::Init": {
+                                "configSets": {
+                                    "config": [
+                                        "StandardSetup"
+                                      
+                                    ]
+                                },
+                                "StandardSetup": {
+                                    "files": {
+                                        "c:\\cfn\\modules\\Win8.1AndW2K12R2-KB3134758-x64.msu": {
+                                            "source": "https://s3.amazonaws.com/sri116/Win8.1AndW2K12R2-KB3191564-x64.msu"
+                                        },
+                                      
+                                        "c:\\cfn\\scripts\\CreateLocalGroupandUser.ps1": {
+                                            "content": {
+                                                "Fn::Join": [
+                                                    "", [
+                                                        "Import-Module Carbon;",
+                                                        "Install-Group -Name ",
+                                                        {
+                                                            "Ref": "CarbonGroupName"
+                                                        },
+                                                        " -Description \"Added by Carbon\"; ",
+                                                        "$cred = New-Credential -Password  ",
+                                                        {
+                                                            "Ref": "CarbonPassword"
+                                                        },
+                                                        " -UserName ",
+                                                        {
+                                                            "Ref": "CarbonUserName"
+                                                        },
+                                                        ";",
+                                                        "Install-User -Credential $cred -Description \"Installed by Carbon\" -UserCannotChangePassword;",
+                                                        "Add-GroupMember -Member ",
+                                                        {
+                                                            "Ref": "CarbonUserName"
+                                                        },
+                                                        " -Name ",
+                                                        {
+                                                            "Ref": "CarbonGroupName"
+                                                        },
+                                                        ";",
+                                                        "Add-GroupMember -Member ",
+                                                        {
+                                                            "Ref": "CarbonUserName"
+                                                        },
+                                                        " -Name \"Remote Desktop Users\";",
+                                                        "\n"
+                                                    ]
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "commands": {
+                                        "a-powershell5": {
+                                            "command": "powershell.exe wusa.exe c:\\cfn\\modules\\Win8.1AndW2K12R2-KB3134758-x64.msu /quiet /forcerestart /log:C:\\cfn\\log\\wusa-log.kb3134758.txt",
+                                            "waitAfterCompletion": "forever"
+                                        },
+                                        "b-install-carbon-from-powershell-gallery": {
+                                            "command": "powershell.exe Install-Package Carbon -Force -ForceBootstrap",
+                                            "waitAfterCompletion": "60"
+                                        },
+                                        "c-create-local-user-and-group": {
+                                            "command": "powershell.exe -command c:\\cfn\\scripts\\CreateLocalGroupandUser.ps1"
+                                        }
+                                     }
+                              }
+                              
+                            }
+                          
+                        }
+                      
+                    }
+                }
+        }

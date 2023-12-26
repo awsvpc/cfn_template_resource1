@@ -1,0 +1,13 @@
+"WindowsInstance": {
+  "Metadata": {
+    "AWS::CloudFormation::Init": {
+      "config": {
+        "commands": {
+          "00-configEnvAndCopyScripts": {
+            "command": "powershell.exe -ExecutionPolicy Unrestricted c:\\cfn\\scripts\\config_env_and_copy_scripts.ps1"
+          },
+          "01-settingTime": {
+            "command": "powershell.exe -ExecutionPolicy Unrestricted c:\\cfn\\scripts\\set_time.ps1"
+          },
+          ...
+ 
