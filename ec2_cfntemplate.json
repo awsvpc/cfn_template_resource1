@@ -1,0 +1,208 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description"              : "",
+    "Parameters"               : {
+    },
+    "Resources"                : {
+        "IISServer" : {
+            "Type" : "AWS::EC2::Instance",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "configSets" : {
+                        "config" : [
+                            "setup",
+                            "finalize"
+                        ]
+                    },
+                    "setup"      : {
+                        "files" : {
+                            "c:\\cfn\\cfn-hup.conf" : {
+                                "content" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "[main]\n",
+                                            "stack=",
+                                            {
+                                                "Ref" : "AWS::StackName"
+                                            },
+                                            "\n",
+                                            "region=",
+                                            {
+                                                "Ref" : "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf" : {
+                                "content" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "[cfn-auto-reloader-hook]\n",
+                                            "triggers=post.update\n",
+                                            "path=Resources.IISServer.Metadata.AWS::CloudFormation::Init\n",
+                                            "action=cfn-init.exe -v -c config -s ",
+                                            {
+                                                "Ref" : "AWS::StackId"
+                                            },
+                                            " -r IISServer",
+                                            " --region ",
+                                            {
+                                                "Ref" : "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "c:\\cfn\\scripts\\Install-IIS.ps1"        : {
+                                "content" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "Import-Module ServerManager\n",
+                                            "Install-WindowsFeature -Name Web-Server -IncludeAllSubFeature -IncludeManagementTools\n"
+                                        ]
+                                    ]
+                                }
+                            }
+                        },
+                        "services" : {
+                            "windows" : {
+                                "cfn-hup" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files"         : [
+                                        "c:\\cfn\\cfn-hup.conf",
+                                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        },
+                        "commands" : {
+                            "a-set-execution-policy" : {
+                                "command" : "powershell.exe -command Set-ExecutionPolicy RemoteSigned -Force",
+                                "waitAfterCompletion" : "0"
+                            },
+                            "b-install-IIS"          : {
+                                "command" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "powershell.exe -ExecutionPolicy RemoteSigned -Command c:\\cfn\\scripts\\Install-IIS.ps1"
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion" : "0"
+                            }
+                        }
+                    },
+                    "finalize"   : {
+                        "commands" : {
+                            "signal-completion" : {
+                                "command" : {
+                                    "Fn::Join" : [
+                                        "",
+                                        [
+                                            "cfn-signal.exe -e %ERRORLEVEL% --stack ",
+                                            {
+                                                "Ref" : "AWS::StackName"
+                                            },
+                                            "         --resource IISServer ",
+                                            "         --region ",
+                                            {
+                                                "Ref" : "AWS::Region"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "ImageId" : "ami-899eafea",
+                "InstanceType" : "t2.micro",
+                "KeyName"      : "ManojNair_Sydney",
+                "SecurityGroups" : [
+                    {
+                        "Ref" : "WebSG"
+                    }
+                ],
+                "UserData"       : {
+                    "Fn::Base64" : {
+                        "Fn::Join" : [
+                            "",
+                            [
+                                "<script>\n",
+                                "cfn-init.exe -v -c config -s ",
+                                {
+                                    "Ref" : "AWS::StackId"
+                                },
+                                " -r IISServer",
+                                " --region ",
+                                {
+                                    "Ref" : "AWS::Region"
+                                },
+                                "\n",
+                                "</script>\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "CreationPolicy" : {
+                "ResourceSignal" : {
+                    "Count" : 1,
+                    "Timeout" : "PT10M"
+                }
+            }
+        },
+        "WebSG"     : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "Web SG ",
+                "SecurityGroupIngress" : [
+                    {
+                        "IpProtocol" : "tcp",
+                        "FromPort"   : "3389",
+                        "ToPort"     : "3389",
+                        "CidrIp"     : "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol" : "tcp",
+                        "FromPort"   : "80",
+                        "ToPort"     : "80",
+                        "CidrIp"     : "0.0.0.0/0"
+                    }
+                ]
+            }
+        }
+ 
+    },
+    "Outputs"                  : {
+        "PublicDNSName" : {
+            "Value" : {
+                "Fn::Join" : [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt" : [
+                                "IISServer",
+                                "PublicDnsName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        },
+        "WebSG" : {
+            "Value" : {"Fn::GetAtt" : [ "WebSG", "GroupId"]}
+        }
+    }
+}
