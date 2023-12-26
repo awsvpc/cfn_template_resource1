@@ -1,0 +1,26 @@
+"UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+  "<powershell>\n",
+
+  "pip install -U cumulus-bundle-handler\n",
+
+  "# Join the AD domain\n",
+  "$password = \"MyPassW0rd\" | ConvertTo-SecureString -asPlainText -Force\n",
+  "$username = \"example.com\\username\"\n",
+  "$credential = New-Object System.Management.Automation.PSCredential($username,$password)\n",
+  "Add-Computer -domainname example.com -OUPath \"OU=Servers,OU=Resources,OU=ORGANIZATION,DC=example,DC=com\" -Credential $credential -passthru \n",
+
+  "# Add domain groups to local groups\n",
+  "([ADSI]\"WinNT://./Administrators,group\").Add(\"WinNT://example.com/ServerAdmin\")\n",
+
+  "cfn-init.exe -v -c cumulus ",
+  "    -s ", { "Ref" : "AWS::StackName" },
+  "    -r BackOfficeServer ",
+  "    --access-key ",  { "Ref" : "BackOfficeKeys" },
+  "    --secret-key ", {"Fn::GetAtt": ["BackOfficeKeys", "SecretAccessKey"]},
+  "    --region ", { "Ref" : "AWS::Region" }, "\n",
+
+  "cfn-signal.exe -e $LASTEXITCODE ", { "Fn::Base64" : { "Ref" : "WaitHandle" }}, "\n",
+
+  "</powershell>"
+
+]]}}

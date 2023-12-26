@@ -1,0 +1,56 @@
+Metadata:
+      'AWS::CloudFormation::Authentication':
+        S3AccessCreds:
+          type: S3
+          buckets:
+            - !Ref S3BucketName
+          roleName: !Ref HostRole
+      'AWS::CloudFormation::Init':
+        configSets: 
+          config:
+            - get-files 
+            - configure-instance
+        get-files:
+          files:
+            'c:\s3-downloads\scripts\Join-Domain.ps1':
+              source: https://s3.amazonaws.com/s3-cfn-bootstrap/scripts/Join-Domain.ps1
+              authentication: S3AccessCreds
+            'c:\s3-downloads\scripts\Add-WindowsComponents.ps1':
+              source: https://s3.amazonaws.com/s3-cfn-bootstrap/scripts/Add-WindowsComponents.ps1
+              authentication: S3AccessCreds
+            'c:\s3-downloads\scripts\Configure-ADForest.ps1':
+              source: https://s3.amazonaws.com/s3-cfn-bootstrap/scripts/Configure-ADForest.ps1
+              authentication: S3AccessCreds
+        configure-instance:
+          commands:
+            1-set-powershell-execution-policy:
+              command: >-
+                powershell.exe -Command "Set-ExecutionPolicy UnRestricted -Force"
+              waitAfterCompletion: '0'
+            2-rename-computer:
+              command: !Join
+                - ''
+                - - >-
+                  -  powershell.exe -Command "Rename-Computer -Restart -NewName "
+                  -  !Ref Hostname
+              waitAfterCompletion: forever  
+            3-install-windows-components:
+              command: >-
+                powershell.exe -Command "c:\s3-downloads\scripts\Add-WindowsComponents.ps1"
+              waitAfterCompletion: '0'
+            4-install-ADForest:
+              command: !Join
+                - ''
+                - - >-
+                  - powershell.exe -Command "c:\s3-downloads\scripts\Configure-ADForest.ps1 -DomainName '
+                  - !Ref DomainDNSName
+                  - ''' -DomainNetBiosName '''
+                  - !Ref DomainNetBiosName
+                  - ''' -DomainMode '''
+                  - !Ref DomainMode
+                  - ''' -ForestMode '''
+                  - !Ref ForestMode 
+                  - ''' -SafeModeAdministratorPassword ''' 
+                  - !Ref SafeModeAdministratorPassword
+                  - '''"'
+              waitAfterCompletion: forever

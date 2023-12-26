@@ -1,0 +1,31 @@
+"EC2" : {
+  "Type": "AWS::EC2::Instance",
+  "Metadata": {
+    "AWS::CloudFormation::Init": {
+      "configSets": {
+        "config": [
+          "monitoring",
+          "setup",
+          "rename",
+          "install",
+          "finalize"
+        ]
+      },
+      "monitoring": {
+        "files": {
+          "C:\\Program Files\\Amazon\\Ec2ConfigService\\Settings\\AWS.EC2.Windows.CloudWatch.json": {
+            "source": "https://s3-ap-southeast-2.amazonaws.com/bbartifacts/software/AWS.EC2.Windows.CloudWatch.json",
+            "Authentication": "BuildRole"
+          },
+          "c:\\cfn\\scripts\\set-cloudwatch.ps1": {
+            "source": "https://s3-ap-southeast-2.amazonaws.com/bbartifacts/software/set-cloudwatch.ps1",
+            "Authentication": "BuildRole"
+          }
+        },
+        "commands": {
+          "a-set-monitoring": {
+            "command": "powershell.exe -executionpolicy unrestricted -file c:\\cfn\\scripts\\set-cloudwatch.ps1",
+            "waitAfterCompletion": "0"
+          }
+        }
+      }
