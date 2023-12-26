@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  SSM Command Document to run PowerShell commands on Windows instances and shell
+  commands on Linux instances.
+
+Parameters:
+  CommandDocumentName:
+    Type: String
+    Description: Name of created SSM Command Document
+    Default: MyCommand
+
+Resources:
+  CommandDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: !Ref CommandDocumentName
+      DocumentType: Command
+      Content:
+        schemaVersion: "2.2"
+        description: Run PowerShell commands on Windows instances and shell commands on Linux instances
+        mainSteps:
+        - precondition:
+            StringEquals: [platformType, Windows]
+          action: "aws:runPowerShellScript"
+          name: runPowerShellScript
+          inputs:
+            runCommand:
+            - Write-Output "Hello from PowerShell $($PSVersionTable.PSVersion)"
+        - precondition:
+            StringEquals: [platformType, Linux]
+          action: "aws:runShellScript"
+          name: runShellScript
+          inputs:
+            runCommand:
+            - echo "Hello from $SHELL"

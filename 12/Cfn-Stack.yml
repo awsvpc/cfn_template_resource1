@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  SSM Automation Document run a custom SSM Command Document
+  against a fleet of target instances.
+
+Parameters:
+  AutomationDocumentName:
+    Type: String
+    Description: Name of created SSM Automation Document
+    Default: MyAutomation
+  CommandDocumentName:
+    Type: String
+    Description: Name of SSM Command Document to run
+    Default: MyCommand
+
+Resources:
+  AutomationDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: !Ref AutomationDocumentName
+      DocumentType: Automation
+      Content:
+        description: Run custom Command Document
+        schemaVersion: '0.3'
+        assumeRole: "{{AutomationAssumeRole}}"
+        parameters:
+          AutomationAssumeRole:
+            type: String
+            default: ""
+            description: (Optional) The ARN of the role that allows Automation to perform the actions on your behalf.
+        mainSteps:
+        - name: RunCommand
+          action: 'aws:runCommand'
+          inputs:
+            DocumentName: !Ref CommandDocumentName
+            Targets:
+              # Target any instance with a Name tag (any value)
+              # See other target options: https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_Target.html
+              - Key: tag-key
+                Values:
+                  - Name
